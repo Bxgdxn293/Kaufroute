@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121311" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Einkauf">
+<title>Einkaufsliste</title>
+<style>
+:root{
+  --bg:#f4f2ee;--card:#ffffff;--ink:#1c1c1a;--muted:#8a877f;--line:#e7e3db;
+  --accent:#1f7a52;--accent-ink:#fff;--accent-soft:#e3f1ea;--danger:#c2412d;--danger-soft:#fbe9e5;
+  --chip:#ebe8e1;--shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.05);
+  --r:16px;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#121311;--card:#1c1e1b;--ink:#f0eee8;--muted:#8f8c84;--line:#2a2c28;
+  --accent:#3fbf86;--accent-ink:#0c1a12;--accent-soft:#1a3326;--danger:#ff7a63;--danger-soft:#3a1f1a;
+  --chip:#262824;--shadow:none;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input{font:inherit;color:inherit}
+.app{max-width:560px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+
+/* header */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(var(--st) + 12px) 16px 10px}
+.tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px 2px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:7px 14px;border-radius:999px;background:var(--chip);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab.on{background:var(--ink);color:var(--bg)}
+.tab.new{background:transparent;border:1.5px dashed var(--line);color:var(--muted)}
+.titlerow{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:16px}
+h1{margin:0;font-size:32px;line-height:1.1;letter-spacing:-.02em;font-weight:800;word-break:break-word}
+.sub{color:var(--muted);font-size:14px;margin-top:4px}
+.status{margin-top:8px;font-size:12px;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--chip)}
+.status:empty{display:none}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.status.live{color:var(--accent);background:var(--accent-soft)}
+.status.live::before{background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.status.warn{color:#b7791f}
+.status.warn::before{background:#d69e2e}
+.bar{height:4px;border-radius:4px;background:var(--line);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+.icon{width:40px;height:40px;border-radius:12px;background:var(--chip);font-size:20px;font-weight:700;flex:none;display:grid;place-items:center}
+.sortbtn{margin-top:14px;width:100%;padding:13px 16px;border-radius:14px;font-weight:700;font-size:15px;
+  background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s}
+.sortbtn:active{transform:scale(.98)}
+.sortbtn.on{background:var(--accent-soft);color:var(--accent)}
+.sortbtn:disabled{opacity:.4}
+
+/* list */
+main{flex:1;padding:4px 16px calc(110px + var(--sb))}
+.group{margin-top:18px}
+.ghead{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 4px 8px}
+.ghead .n{margin-left:auto;font-weight:600;letter-spacing:0}
+.ghead .em{font-size:17px;letter-spacing:0}
+.group.alldone .ghead{opacity:.55}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.flat{margin-top:14px}
+.item{display:flex;align-items:center;gap:12px;padding:0 6px 0 14px;min-height:54px;border-top:1px solid var(--line);cursor:pointer;user-select:none}
+.item:first-child{border-top:0}
+.chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;transition:.15s}
+.chk svg{width:14px;height:14px;opacity:0;transition:.15s}
+.item.done .chk{background:var(--accent);border-color:var(--accent)}
+.item.done .chk svg{opacity:1}
+.txt{flex:1;padding:14px 0;word-break:break-word}
+.item.done .txt{color:var(--muted);text-decoration:line-through}
+.tag{font-size:16px;flex:none}
+.dots{width:40px;height:40px;flex:none;color:var(--muted);font-size:20px;font-weight:700;border-radius:10px}
+.dots:active{background:var(--chip)}
+.item.flash{animation:flash .9s ease}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.empty{text-align:center;color:var(--muted);padding:60px 24px}
+.empty .big{font-size:44px;margin-bottom:10px}
+.empty b{color:var(--ink);display:block;font-size:18px;margin-bottom:6px}
+
+/* composer */
+.composer{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 16px calc(10px + var(--sb));
+  background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.composer .in{max-width:528px;margin:0 auto;display:flex;gap:8px;background:var(--card);border-radius:18px;padding:6px;box-shadow:0 2px 20px rgba(0,0,0,.08);border:1px solid var(--line)}
+.composer input{flex:1;min-width:0;border:0;background:none;outline:none;padding:10px 10px;font-size:16px}
+.add{width:44px;height:44px;border-radius:13px;background:var(--accent);color:var(--accent-ink);font-size:26px;font-weight:600;flex:none;line-height:1}
+.hint{max-width:528px;margin:6px auto 0;font-size:12px;color:var(--muted);text-align:center}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--card);
+  border-radius:22px 22px 0 0;padding:10px 18px calc(18px + var(--sb));transform:translateY(105%);transition:transform .25s cubic-bezier(.2,.8,.2,1);max-height:88vh;overflow:auto;visibility:hidden;transition:transform .25s cubic-bezier(.2,.8,.2,1),visibility 0s .25s}
+.sheet.on{transform:none;visibility:visible;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.sheet h2{margin:0 0 14px;font-size:20px}
+.field{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);outline:none;font-size:16px}
+.field:focus{border-color:var(--accent)}
+.lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}
+.depts{display:flex;flex-wrap:wrap;gap:6px}
+.dchip{padding:8px 11px;border-radius:999px;background:var(--chip);font-size:14px;white-space:nowrap}
+.dchip.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.btns{display:flex;gap:10px;margin-top:20px}
+.btn{flex:1;padding:14px;border-radius:14px;font-weight:700;background:var(--chip)}
+.btn.pri{background:var(--accent);color:var(--accent-ink)}
+.btn.dan{background:var(--danger-soft);color:var(--danger)}
+.row{display:flex;align-items:center;gap:10px;width:100%;padding:14px 4px;border-top:1px solid var(--line);text-align:left;font-weight:600}
+.row:first-of-type{border-top:0}
+.row.dan{color:var(--danger)}
+.row .r{margin-left:auto;color:var(--muted);font-weight:500}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.toast{position:fixed;left:50%;bottom:calc(96px + var(--sb));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:30;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast button{color:var(--accent);font-weight:800;margin-left:10px;pointer-events:auto}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="tabs" id="tabs"></div>
+    <div class="titlerow">
+      <div style="min-width:0">
+        <h1 id="title"></h1>
+        <div class="sub" id="sub"></div>
+        <button class="status" id="status"></button>
+      </div>
+      <button class="icon" id="moreBtn" aria-label="Liste bearbeiten">⋯</button>
+    </div>
+    <div class="bar"><i id="prog" style="width:0"></i></div>
+    <button class="sortbtn" id="sortBtn"></button>
+  </header>
+  <main id="list"></main>
+</div>
+
+<form class="composer" id="composer" autocomplete="off">
+  <div class="in">
+    <input id="inp" enterkeyhint="send" placeholder="Was brauchst du? z. B. Tomaten, Milch, Dübel">
+    <button type="submit" class="add" aria-label="Hinzufügen">+</button>
+  </div>
+  <div class="hint">Mehrere auf einmal mit Komma trennen</div>
+</form>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Abteilungen & automatische Zuordnung -->
+<script id="classifier">
+const DEPTS = [
+ {id:'obst',name:'Obst & Gemüse',icon:'🥬',kw:`obst gemüse tomate tomaten gurke salatgurke paprika salat eisbergsalat feldsalat rucola zwiebel zwiebeln frühlingszwiebel knoblauch kartoffel kartoffeln süßkartoffel karotte karotten möhre möhren zucchini aubergine brokkoli blumenkohl kohl rotkohl weißkohl spinat lauch porree sellerie champignon champignons pilz pilze radieschen avocado ingwer chili peperoni kürbis mais maiskolben rote_bete erbsenschoten apfel äpfel banane bananen birne orange orangen mandarine clementine zitrone zitronen limette limetten traube trauben weintrauben erdbeere erdbeeren himbeere himbeeren heidelbeere heidelbeeren blaubeere blaubeeren kiwi mango ananas melone wassermelone pfirsich nektarine kirsche kirschen pflaume pflaumen granatapfel feige petersilie basilikum schnittlauch dill koriander minze rosmarin thymian`},
+ {id:'brot',name:'Brot & Backwaren',icon:'🥖',kw:`brot brötchen semmel semmeln toast toastbrot baguette croissant croissants brezel brezeln laugenbrezel laugenstange kuchen wrap wraps tortilla tortillas knäckebrot zwieback ciabatta fladenbrot burgerbrötchen hotdogbrötchen`},
+ {id:'kuehl',name:'Milch, Käse & Eier',icon:'🥛',kw:`milch hafermilch joghurt jogurt quark sahne schlagsahne butter margarine schmand creme_fraiche crème_fraîche buttermilch kefir skyr pudding ei eier käse frischkäse gouda mozzarella feta parmesan cheddar emmentaler camembert hirtenkäse halloumi reibekäse scheibenkäse schafskäse tofu`},
+ {id:'fleisch',name:'Fleisch & Wurst',icon:'🥩',kw:`fleisch hack hackfleisch rinderhack hähnchen hähnchenbrust huhn hühnchen chicken pute putenbrust schnitzel steak steaks wurst würstchen wienerle bratwurst salami schinken kochschinken speck bacon gyros frikadelle frikadellen leberkäse rind rindfleisch schwein schweinefleisch kassler kotelett döner aufschnitt mortadella fisch lachs`},
+ {id:'tk',name:'Tiefkühl',icon:'❄️',kw:`tiefkühl tk pizza tiefkühlpizza pommes eis eiscreme kroketten fischstäbchen rahmspinat tiefkühlgemüse kräuterbaguette`},
+ {id:'vorrat',name:'Nudeln, Reis & Konserven',icon:'🍝',kw:`nudel nudeln pasta spaghetti penne fusilli tortellini lasagne lasagneplatten reis basmatireis couscous bulgur linsen kichererbsen bohnen kidneybohnen dose dosen konserve thunfisch tomatenmark passata passierte_tomaten gehackte_tomaten mais_dose suppe ravioli gnocchi`},
+ {id:'gewuerz',name:'Öl, Saucen & Gewürze',icon:'🧂',kw:`öl olivenöl rapsöl sonnenblumenöl essig balsamico salz pfeffer gewürz gewürze paprikapulver curry currypulver zimt oregano muskat ketchup mayo mayonnaise senf sojasauce sojasoße sauce soße sosse brühe gemüsebrühe maggi pesto grillsauce dressing`},
+ {id:'backen',name:'Backen',icon:'🧁',kw:`mehl zucker backpulver hefe vanillezucker puderzucker speisestärke kuvertüre schokodrops backmischung natron`},
+ {id:'frueh',name:'Frühstück & Kaffee',icon:'☕',kw:`müsli haferflocken cornflakes marmelade konfitüre nutella honig erdnussbutter kaffee kaffeebohnen espresso kaffeepads kapseln tee kakao aufstrich`},
+ {id:'suess',name:'Süßes & Snacks',icon:'🍫',kw:`schokolade schoko chips gummibärchen haribo kekse keks nüsse nuss erdnüsse cashews salzstangen popcorn riegel proteinriegel bonbon bonbons kaugummi cracker nachos süßigkeiten`},
+ {id:'getraenke',name:'Getränke',icon:'🥤',kw:`wasser mineralwasser sprudel saft apfelsaft orangensaft cola fanta sprite limo limonade bier wein rotwein weißwein sekt eistee energy energydrink red_bull smoothie mate schorle apfelschorle vodka wodka whisky rum gin`},
+ {id:'drogerie',name:'Drogerie & Hygiene',icon:'🧴',kw:`shampoo duschgel seife zahnpasta zahnbürste zahnseide deo deodorant klopapier toilettenpapier taschentücher rasierer rasierklingen creme bodylotion handcreme tampons binden windeln feuchttücher wattepads wattestäbchen sonnencreme haargel haarspray spülung pflaster kondome`},
+ {id:'haushalt',name:'Haushalt & Putzen',icon:'🧽',kw:`spülmittel waschmittel weichspüler müllbeutel mülltüten alufolie frischhaltefolie backpapier schwamm schwämme putzmittel reiniger allzweckreiniger glasreiniger küchenrolle spültabs geschirrtabs tabs kerzen servietten gefrierbeutel entkalker`},
+ {id:'tier',name:'Tierbedarf',icon:'🐾',kw:`hundefutter katzenfutter futter katzenstreu streu leckerli kauknochen`},
+ {id:'werkzeug',name:'Werkzeug',icon:'🔨',kw:`werkzeug hammer schraubenzieher schraubendreher bohrer akkuschrauber bohrmaschine säge stichsäge zange wasserwaage maßband zollstock cuttermesser cutter spachtel bit bits schleifpapier feile leiter meißel handschuhe arbeitshandschuhe`},
+ {id:'befestigung',name:'Schrauben & Befestigung',icon:'🔩',kw:`schraube schrauben dübel nagel nägel unterlegscheibe unterlegscheiben haken winkel kabelbinder klebeband panzertape gewebeband kleber sekundenkleber silikon acryl montagekleber bauschaum scharnier scharniere gewindestange`},
+ {id:'farben',name:'Farben & Malerbedarf',icon:'🎨',kw:`farbe wandfarbe lack pinsel farbrolle abdeckfolie malerkrepp kreppband grundierung tapete tapeten kleister spachtelmasse lasur holzlasur abdeckplane`},
+ {id:'garten',name:'Garten',icon:'🌱',kw:`erde blumenerde dünger pflanze pflanzen blumen samen saatgut rasen rasensamen schlauch gartenschlauch gießkanne blumentopf rindenmulch mulch kies rasenmäher schaufel spaten rechen harke grill holzkohle grillkohle unkrautvernichter`},
+ {id:'elektro',name:'Elektro & Licht',icon:'💡',kw:`glühbirne leuchtmittel led lampe lampen kabel verlängerungskabel mehrfachsteckdose steckdose schalter batterie batterien lichterkette sicherung stecker`},
+ {id:'sanitaer',name:'Sanitär',icon:'🚿',kw:`wasserhahn armatur duschkopf brause siphon dichtung dichtungen abfluss rohrreiniger wc_sitz klobrille toilettensitz duschvorhang`},
+ {id:'bau',name:'Holz & Baustoffe',icon:'🧱',kw:`holz brett bretter latte latten leiste leisten sockelleiste osb spanplatte platte fliese fliesen fugenmasse zement beton mörtel gips rigips dämmung laminat parkett teppich trittschalldämmung`},
+ {id:'sonst',name:'Sonstiges',icon:'📦',kw:``}
+];
+const norm = s => String(s).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[éè]/g,'e').replace(/[àâ]/g,'a').replace(/î/g,'i').trim();
+DEPTS.forEach(d => d.kws = d.kw.split(/\s+/).filter(Boolean).map(k => norm(k.replace(/_/g,' '))));
+const DEPT = Object.fromEntries(DEPTS.map(d => [d.id, d]));
+const QTY = /^(ca\.?\s*)?\d+([.,]\d+)?\s*(x|stk|stueck|kg|g|gr|l|ml|pck|packung|packungen|pkg|dose|dosen|flasche|flaschen|bund|beutel|glas|glaeser|kiste|kisten|rolle|rollen|m|cm|mm|eimer|sack|saecke|tuete|tueten|becher)?\.?\s+/;
+const PL = ['','n','en','e','s','er','nen','r'];
+function itemKey(t){ return norm(t).replace(QTY,'').replace(/\s+/g,' ').trim(); }
+function classify(text, learned){
+  const k = itemKey(text);
+  if (!k) return 'sonst';
+  if (learned && learned[k]) return learned[k];
+  const words = k.split(/[^a-z0-9]+/).filter(Boolean);
+  let best = 'sonst', bs = 0;
+  for (const d of DEPTS) for (const kw of d.kws) {
+    let s = 0;
+    if (kw.includes(' ')) { if (k.includes(kw)) s = 500 + kw.length; }
+    else for (const w of words) {
+      let ws = 0;
+      if (PL.some(p => w === kw + p)) ws = 300 + kw.length;
+      else if (kw.length >= 3 && PL.some(p => w.endsWith(kw + p))) ws = 100 + kw.length;
+      else if (kw.length >= 5 && w.includes(kw)) ws = kw.length;
+      if (ws > s) s = ws;
+    }
+    if (s > bs) { bs = s; best = d.id; }
+  }
+  return best;
+}
+if (typeof module !== 'undefined') module.exports = { classify, DEPTS };
+</script>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const V1 = 'einkaufsliste.v1', V2 = 'einkaufsliste.v2', VIEW = 'einkaufsliste.view', MIG = 'einkaufsliste.migrated';
+const ls = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} }
+};
+
+/* ---------- Zustand ----------
+   S.lists:   { id: {name, t} }
+   S.items:   { id: {listId, text, dept, done, manual, t} }
+   S.learned: { key: deptId }                                  */
+let S = { lists: {}, items: {}, learned: {} };
+let mode = 'loading';          // 'loading' | 'local' | 'remote'
+let db = null, readOnly = false, slow = false;
+const V = Object.assign({ current: null, sorted: {} }, ls.get(VIEW) || {});
+const saveView = () => ls.set(VIEW, V);
+
+/* ---------- lokal (ohne claude.ai, z. B. später als App) ---------- */
+function readLocal(){
+  const v2 = ls.get(V2);
+  if (v2 && v2.lists) return v2;
+  const v1 = ls.get(V1);
+  const out = { lists: {}, items: {}, learned: {} };
+  if (v1 && Array.isArray(v1.lists)) {
+    v1.lists.forEach((l, li) => {
+      out.lists[l.id] = { name: l.name, t: li };
+      if (l.sorted) V.sorted[l.id] = true;
+      (l.items || []).forEach((it, ii) => out.items[it.id] = { listId: l.id, text: it.text, dept: it.dept, done: !!it.done, manual: !!it.manual, t: li * 1e4 + ii });
+    });
+    out.learned = v1.learned || {};
+    if (v1.current) V.current = v1.current;
+  }
+  return out;
+}
+function startLocal(){
+  mode = 'local';
+  S = readLocal();
+  if (!Object.keys(S.lists).length) {
+    S.lists = { kaufland: { name: 'Kaufland', t: 1 }, hornbach: { name: 'Hornbach', t: 2 } };
+  }
+  ls.set(V2, S);
+  render();
+}
+
+/* ---------- geteilt (über claude.ai) ---------- */
+const safeKey = k => (k.replace(/[^a-z0-9_-]/g, '_').slice(0, 150) || '_');
+const got = { lists: false, items: false, learned: false };
+let slowTimer;
+
+async function startRemote(){
+  db = await claude.use('db');
+  if (!db) { startLocal(); return; }
+  try {
+    const user = await claude.use('user');
+    if (user && user.can) { const w = await user.can('data.write'); if (w === false) readOnly = true; }
+  } catch(e) {}
+  mode = 'remote';
+  slowTimer = setTimeout(() => { slow = true; render(); }, 10000);
+  const sub = (name, apply) => db.collection(name).onSnapshot(snap => {
+    apply(snap.docs);
+    if (!snap.metadata.fromCache) got[name] = true;
+    if (got.lists && got.items && got.learned) { clearTimeout(slowTimer); slow = false; migrate(); }
+    render();
+  }, err => { clearTimeout(slowTimer); got[name] = true; render(); if (err.code !== 'revoked') toast('Verbindung unterbrochen – bitte Seite neu öffnen'); });
+
+  sub('lists', docs => { S.lists = {}; docs.forEach(d => { const x = d.data(); if (x && typeof x.name === 'string') S.lists[d.id] = { name: x.name, t: +x.t || 0 }; }); });
+  sub('items', docs => { S.items = {}; docs.forEach(d => { const x = d.data(); if (x && typeof x.text === 'string') S.items[d.id] = { listId: String(x.listId), text: x.text, dept: DEPT[x.dept] ? x.dept : 'sonst', done: !!x.done, manual: !!x.manual, t: +x.t || 0 }; }); });
+  sub('learned', docs => { S.learned = {}; docs.forEach(d => { const x = d.data(); if (x && x.k && DEPT[x.d]) S.learned[x.k] = x.d; }); });
+}
+
+// Einträge aus der ersten (nur lokalen) Version einmalig in die geteilten Listen übernehmen
+let migrated = false;
+function migrate(){
+  if (migrated || readOnly) return;
+  migrated = true;
+  if (ls.get(MIG)) return;
+  const old = readLocal();
+  const oldItems = Object.entries(old.items);
+  if (!oldItems.length) { ls.set(MIG, 1); return; }
+  const map = {};
+  for (const [oid, l] of Object.entries(old.lists)) {
+    const match = Object.entries(S.lists).find(([, r]) => r.name.trim().toLowerCase() === l.name.trim().toLowerCase());
+    if (match) map[oid] = match[0];
+    else { const id = uid(); map[oid] = id; putList(id, { name: l.name, t: Date.now() + (l.t || 0) }); }
+  }
+  oldItems.forEach(([, it]) => putItem(uid(), { ...it, listId: map[it.listId] || Object.keys(S.lists)[0] }));
+  Object.entries(old.learned || {}).forEach(([k, d]) => putLearned(k, d));
+  ls.set(MIG, 1);
+  toast(`${oldItems.length} bisherige Einträge übernommen`);
+}
+
+/* ---------- Schreiben ---------- */
+const chains = {};
+function commit(path, data){
+  if (mode === 'local') { ls.set(V2, S); return; }
+  if (mode !== 'remote' || readOnly) return;
+  const run = (retry) => (data ? db.doc(path).set(data) : db.doc(path).delete()).catch(err => {
+    if (err && err.code === 'unavailable' && !retry) return new Promise(r => setTimeout(r, 400 + Math.random() * 600)).then(() => run(true));
+    if (err && err.code === 'invalid_argument') { readOnly = true; render(); toast('Du hast hier nur Leserechte'); return; }
+    if (err && err.code === 'quota_exceeded') { toast('Speicher voll – lösch erledigte Einträge'); return; }
+    toast('Konnte nicht speichern');
+  });
+  chains[path] = (chains[path] || Promise.resolve()).then(() => run(false));
+}
+function putList(id, d){ S.lists[id] = d; commit('lists/' + id, d); }
+function delList(id){ delete S.lists[id]; commit('lists/' + id, null); }
+function putItem(id, d){ S.items[id] = d; commit('items/' + id, d); }
+function delItem(id){ delete S.items[id]; commit('items/' + id, null); }
+function putLearned(k, d){ S.learned[k] = d; commit('learned/' + safeKey(k), { k, d }); }
+
+/* ---------- Helfer ---------- */
+const listArr = () => Object.entries(S.lists).map(([id, l]) => ({ id, ...l })).sort((a, b) => a.t - b.t);
+const itemsOf = lid => Object.entries(S.items).filter(([, i]) => i.listId === lid).map(([id, i]) => ({ id, ...i })).sort((a, b) => a.t - b.t);
+function curId(){
+  const ids = listArr().map(l => l.id);
+  if (!ids.includes(V.current)) { V.current = ids[0] || null; }
+  return V.current;
+}
+const canWrite = () => mode === 'local' || (mode === 'remote' && !readOnly);
+
+/* ---------- Anzeige ---------- */
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-ink)"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+let flashId = null;
+
+function render(){
+  const main = $('#list');
+  const st = $('#status');
+  if (mode === 'loading') {
+    $('#tabs').innerHTML = ''; $('#title').textContent = 'Einkaufsliste'; $('#sub').textContent = 'Lädt …';
+    $('#sortBtn').disabled = true; $('#sortBtn').textContent = '⇅ Nach Abteilungen sortieren';
+    main.innerHTML = ''; st.textContent = ''; return;
+  }
+  st.className = 'status ' + (mode === 'remote' ? (slow ? 'warn' : 'live') : '');
+  st.textContent = mode === 'remote' ? (slow ? 'Verbindung langsam – evtl. nicht aktuell' : readOnly ? 'Geteilt · nur lesen' : 'Geteilt · live') : 'Nur auf diesem Gerät';
+  $('#composer').style.display = canWrite() ? '' : 'none';
+
+  const lists = listArr();
+  const cid = curId();
+  $('#tabs').innerHTML = lists.map(l => {
+    const open = itemsOf(l.id).filter(i => !i.done).length;
+    return `<button class="tab ${l.id === cid ? 'on' : ''}" data-list="${l.id}">${esc(l.name)}${open ? ' · ' + open : ''}</button>`;
+  }).join('') + (canWrite() ? `<button class="tab new" id="newListBtn">+ Neue Liste</button>` : '');
+
+  if (!cid) {
+    $('#title').textContent = 'Einkaufsliste'; $('#sub').textContent = 'Noch keine Liste';
+    $('#prog').style.width = '0'; $('#sortBtn').disabled = true; $('#moreBtn').style.visibility = 'hidden';
+    $('#composer').style.display = 'none';
+    main.innerHTML = `<div class="empty"><div class="big">🛒</div><b>Noch keine Liste</b>${canWrite() ? 'Tippe oben auf „+ Neue Liste“, z. B. für Kaufland oder Hornbach.' : 'Sobald jemand eine Liste anlegt, erscheint sie hier.'}</div>`;
+    return;
+  }
+  $('#moreBtn').style.visibility = '';
+  const L = S.lists[cid], items = itemsOf(cid), sorted = !!V.sorted[cid];
+  $('#title').textContent = L.name;
+  const total = items.length, done = items.filter(i => i.done).length;
+  $('#sub').textContent = total ? `${done} von ${total} erledigt` : 'Noch leer';
+  $('#prog').style.width = total ? (done / total * 100) + '%' : '0';
+
+  const sb = $('#sortBtn');
+  sb.disabled = !total;
+  sb.classList.toggle('on', sorted);
+  sb.innerHTML = sorted ? '✓ Nach Abteilungen sortiert <span style="font-weight:500;opacity:.8">· aufheben</span>' : '⇅ Nach Abteilungen sortieren';
+
+  if (!total) {
+    main.innerHTML = `<div class="empty"><div class="big">🛒</div><b>„${esc(L.name)}“ ist leer</b>Schreib unten einfach alles rein, was dir einfällt – in beliebiger Reihenfolge. Danach mit einem Tipp nach Abteilungen sortieren.</div>`;
+    return;
+  }
+  const row = (it, showTag) =>
+    `<div class="item ${it.done ? 'done' : ''} ${it.id === flashId ? 'flash' : ''}" data-id="${it.id}">
+      <span class="chk">${CHECK}</span>
+      <span class="txt">${esc(it.text)}</span>
+      ${showTag ? `<span class="tag" title="${esc(DEPT[it.dept].name)}">${DEPT[it.dept].icon}</span>` : ''}
+      ${canWrite() ? `<button class="dots" data-edit="${it.id}" aria-label="Bearbeiten">⋯</button>` : ''}
+    </div>`;
+
+  if (sorted) {
+    let html = '';
+    for (const d of DEPTS) {
+      const its = items.filter(i => i.dept === d.id).sort((a, b) => a.done - b.done);
+      if (!its.length) continue;
+      const open = its.filter(i => !i.done).length;
+      html += `<section class="group ${open ? '' : 'alldone'}"><div class="ghead"><span class="em">${d.icon}</span>${esc(d.name)}<span class="n">${open ? open : '✓'}</span></div><div class="card">${its.map(i => row(i, false)).join('')}</div></section>`;
+    }
+    main.innerHTML = html;
+  } else {
+    main.innerHTML = `<div class="card flat">${[...items].sort((a, b) => a.done - b.done).map(i => row(i, true)).join('')}</div>`;
+  }
+  flashId = null;
+}
+
+/* ---------- Bedienung ---------- */
+function addItems(raw){
+  const cid = curId(); if (!cid || !canWrite()) return;
+  const parts = raw.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+  let t = Date.now();
+  for (const p of parts) {
+    const text = (p.charAt(0).toUpperCase() + p.slice(1)).slice(0, 200);
+    const id = uid();
+    putItem(id, { listId: cid, text, dept: classify(text, S.learned), done: false, manual: false, t: t++ });
+    flashId = id;
+  }
+  render();
+}
+
+$('#composer').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#inp').value;
+  if (!v.trim()) return;
+  addItems(v);
+  $('#inp').value = '';
+  $('#inp').focus();
+});
+
+$('#sortBtn').addEventListener('click', () => {
+  const cid = curId(); if (!cid) return;
+  V.sorted[cid] = !V.sorted[cid]; saveView();
+  if (V.sorted[cid]) {
+    const items = itemsOf(cid);
+    if (canWrite()) items.forEach(i => {
+      if (i.manual) return;
+      const d = classify(i.text, S.learned);
+      if (d !== i.dept) { const { id, ...rest } = i; putItem(id, { ...rest, dept: d }); }
+    });
+    const n = new Set(itemsOf(cid).map(i => i.dept)).size;
+    toast(`Sortiert in ${n} Abteilung${n === 1 ? '' : 'en'}`);
+  }
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+$('#tabs').addEventListener('click', e => {
+  const t = e.target.closest('[data-list]');
+  if (t) { V.current = t.dataset.list; saveView(); render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest('#newListBtn')) openNewList();
+});
+
+$('#list').addEventListener('click', e => {
+  const ed = e.target.closest('[data-edit]');
+  if (ed) { openEdit(ed.dataset.edit); return; }
+  const row = e.target.closest('.item');
+  if (!row || !canWrite()) return;
+  const it = S.items[row.dataset.id];
+  if (!it) return;
+  putItem(row.dataset.id, { ...it, done: !it.done });
+  render();
+});
+
+$('#moreBtn').addEventListener('click', openListMenu);
+$('#status').addEventListener('click', openShareInfo);
+
+/* ---------- Fenster (Sheets) ---------- */
+function openSheet(html, bind){
+  const sh = $('#sheet');
+  sh.innerHTML = '<div class="grab"></div>' + html;
+  $('#scrim').classList.add('on');
+  requestAnimationFrame(() => sh.classList.add('on'));
+  bind && bind(sh);
+}
+function closeSheet(){ $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); }
+$('#scrim').addEventListener('click', closeSheet);
+
+function deptChips(sel){
+  return `<div class="depts">${DEPTS.map(d => `<button class="dchip ${d.id === sel ? 'on' : ''}" data-d="${d.id}">${d.icon} ${esc(d.name)}</button>`).join('')}</div>`;
+}
+
+function openEdit(id){
+  const it0 = S.items[id];
+  if (!it0) return;
+  let sel = it0.dept, touched = false;
+  openSheet(`
+    <h2>Eintrag bearbeiten</h2>
+    <input class="field" id="eTxt" value="${esc(it0.text)}" maxlength="200">
+    <div class="lbl">Abteilung</div>
+    <div id="eDepts">${deptChips(sel)}</div>
+    <div class="note">Wenn du die Abteilung änderst, merkt sich die App das für das nächste Mal.</div>
+    <div class="btns"><button class="btn dan" id="eDel">Löschen</button><button class="btn pri" id="eSave">Speichern</button></div>
+  `, sh => {
+    const txt = sh.querySelector('#eTxt');
+    txt.addEventListener('input', () => {
+      if (!touched) { sel = classify(txt.value, S.learned); sh.querySelector('#eDepts').innerHTML = deptChips(sel); }
+    });
+    sh.querySelector('#eDepts').addEventListener('click', e => {
+      const b = e.target.closest('[data-d]'); if (!b) return;
+      sel = b.dataset.d; touched = true;
+      sh.querySelectorAll('.dchip').forEach(c => c.classList.toggle('on', c.dataset.d === sel));
+    });
+    sh.querySelector('#eSave').onclick = () => {
+      const t = txt.value.trim(); const it = S.items[id];
+      if (!t || !it) { closeSheet(); return; }
+      if (touched) {
+        const k = itemKey(t);
+        putItem(id, { ...it, text: t, dept: sel, manual: true });
+        if (k) {
+          putLearned(k, sel);
+          Object.entries(S.items).forEach(([xid, x]) => { if (xid !== id && !x.manual && x.dept !== sel && itemKey(x.text) === k) putItem(xid, { ...x, dept: sel }); });
+        }
+      } else {
+        putItem(id, { ...it, text: t, dept: it.manual ? it.dept : classify(t, S.learned) });
+      }
+      closeSheet(); render();
+    };
+    sh.querySelector('#eDel').onclick = () => {
+      const it = S.items[id]; if (!it) { closeSheet(); return; }
+      delItem(id); closeSheet(); render();
+      toast('Gelöscht', () => { putItem(id, it); render(); });
+    };
+  });
+}
+
+function openNewList(){
+  openSheet(`
+    <h2>Neue Liste</h2>
+    <input class="field" id="nName" placeholder="z. B. Lidl, dm, Bauhaus …" maxlength="40">
+    <div class="btns"><button class="btn" id="nCancel">Abbrechen</button><button class="btn pri" id="nOk">Erstellen</button></div>
+  `, sh => {
+    const f = sh.querySelector('#nName');
+    setTimeout(() => f.focus(), 250);
+    const ok = () => {
+      const n = f.value.trim(); if (!n) { f.focus(); return; }
+      const id = uid(); putList(id, { name: n, t: Date.now() }); V.current = id; saveView();
+      closeSheet(); render();
+    };
+    sh.querySelector('#nOk').onclick = ok;
+    f.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    sh.querySelector('#nCancel').onclick = closeSheet;
+  });
+}
+
+function openListMenu(){
+  const cid = curId(); if (!cid) return;
+  const L = S.lists[cid], items = itemsOf(cid), done = items.filter(i => i.done);
+  const w = canWrite();
+  openSheet(`
+    <h2>Liste bearbeiten</h2>
+    ${w ? `<input class="field" id="lName" value="${esc(L.name)}" maxlength="40">` : `<div class="note">${esc(L.name)}</div>`}
+    <div class="lbl">Aktionen</div>
+    <button class="row" id="lShare">👥 Mit anderen teilen<span class="r">${mode === 'remote' ? 'live' : 'aus'}</span></button>
+    ${w ? `
+    <button class="row" id="lDone" ${done.length ? '' : 'disabled style="opacity:.4"'}>✓ Erledigte entfernen<span class="r">${done.length}</span></button>
+    <button class="row" id="lClear" ${items.length ? '' : 'disabled style="opacity:.4"'}>🧹 Alle Einträge löschen<span class="r">${items.length}</span></button>
+    <button class="row dan" id="lDel">🗑 Liste „${esc(L.name)}“ löschen</button>` : ''}
+    <div class="btns"><button class="btn pri" id="lOk">Fertig</button></div>
+  `, sh => {
+    const f = sh.querySelector('#lName');
+    const rename = () => { if (!f) return; const n = f.value.trim(); const cur = S.lists[cid]; if (n && cur && n !== cur.name) putList(cid, { ...cur, name: n }); };
+    sh.querySelector('#lOk').onclick = () => { rename(); closeSheet(); render(); };
+    sh.querySelector('#lShare').onclick = () => { rename(); openShareInfo(); };
+    if (!w) return;
+    sh.querySelector('#lDone').onclick = () => {
+      rename();
+      done.forEach(i => delItem(i.id)); closeSheet(); render();
+      toast(`${done.length} entfernt`, () => { done.forEach(({ id, ...r }) => putItem(id, r)); render(); });
+    };
+    sh.querySelector('#lClear').onclick = () => {
+      rename();
+      items.forEach(i => delItem(i.id)); closeSheet(); render();
+      toast('Liste geleert', () => { items.forEach(({ id, ...r }) => putItem(id, r)); render(); });
+    };
+    const del = sh.querySelector('#lDel');
+    del.onclick = () => {
+      if (!del.dataset.sure) { del.dataset.sure = 1; del.innerHTML = '⚠️ Wirklich löschen? Nochmal tippen'; return; }
+      const list = S.lists[cid];
+      delList(cid); items.forEach(i => delItem(i.id));
+      V.current = null; saveView(); closeSheet(); render();
+      toast('Liste gelöscht', () => { putList(cid, list); items.forEach(({ id, ...r }) => putItem(id, r)); V.current = cid; saveView(); render(); });
+    };
+  });
+}
+
+function openShareInfo(){
+  openSheet(mode === 'remote' ? `
+    <h2>👥 Gemeinsam einkaufen</h2>
+    <p style="margin:0 0 12px">Alle Listen sind <b>live geteilt</b>: Was einer einträgt oder abhakt, sieht der andere sofort – auch unterwegs im Laden.</p>
+    <div class="lbl">So lädst du jemanden ein</div>
+    <ol style="margin:0;padding-left:20px;line-height:1.6">
+      <li>Öffne diese App auf claude.ai und tippe auf <b>Teilen</b>.</li>
+      <li>Lade die Person per E-Mail ein und gib ihr <b>Bearbeiten</b>-Rechte.</li>
+      <li>Sie öffnet den Link und meldet sich mit ihrem Claude-Konto an (kostenlos reicht).</li>
+    </ol>
+    <div class="note">Mit reinen Leserechten kann sie die Liste nur ansehen, nicht abhaken.</div>
+    <div class="btns"><button class="btn pri" id="sOk">Verstanden</button></div>
+  ` : `
+    <h2>👥 Teilen ist aus</h2>
+    <p style="margin:0">Gerade wird alles nur auf diesem Gerät gespeichert. Öffne die App über claude.ai und melde dich an, dann sind die Listen automatisch geteilt und auf allen Geräten gleich.</p>
+    <div class="btns"><button class="btn pri" id="sOk">OK</button></div>
+  `, sh => { sh.querySelector('#sOk').onclick = closeSheet; });
+}
+
+let tT;
+function toast(msg, undoFn){
+  const t = $('#toast');
+  t.innerHTML = esc(msg) + (undoFn ? '<button id="undoBtn">Rückgängig</button>' : '');
+  t.classList.add('on');
+  if (undoFn) t.querySelector('#undoBtn').onclick = () => { undoFn(); t.classList.remove('on'); };
+  clearTimeout(tT); tT = setTimeout(() => t.classList.remove('on'), undoFn ? 4000 : 1800);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+/* ---------- Start ---------- */
+const hasClaude = () => typeof window.claude !== 'undefined' && window.claude && typeof window.claude.use === 'function';
+render();
+(function boot(n){
+  if (hasClaude()) { startRemote().catch(startLocal); return; }
+  if (n > 15) { startLocal(); return; }
+  setTimeout(() => boot(n + 1), 100);
+})(0);
+</script>
+</body>
+</html>
